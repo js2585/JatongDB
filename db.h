@@ -1,6 +1,7 @@
 #ifndef DB_H
 #define DB_H
 #include <iostream>
+#include "btree.h"
 
 enum StatementType
 {
@@ -40,6 +41,17 @@ enum MetaCommandResult
 
 struct Table
 {
-    int numRows;
+    Btree* btree;
 };
+
+std::vector<std::string> getArgs(std::string& input, int numArgs);
+PrepareResult prepareStatement(std::string& input, Statement& statement);
+void writeEntireBtree(NodeGroup* curr, std::ofstream& wf);
+void freeBtree(NodeGroup* curr);
+MetaCommandResult doMetaCommand(std::string& input, std::string_view filename, Table* table);
+void executeInsert(Statement& statement, std::string_view filename, Table* table);
+void printEntireBtree(NodeGroup* curr);
+void executeSelect(Statement& statement, std::string_view filename, Table* table);
+Table* createTable(std::string_view filename);
+
 #endif

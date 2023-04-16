@@ -2,6 +2,7 @@
 #include <vector>
 #include <fstream>
 #include "db.h"
+#include "btree.h"
 
 std::vector<std::string> getArgs(std::string& input, int numArgs)
 {
@@ -47,10 +48,46 @@ PrepareResult prepareStatement(std::string& input, Statement& statement)
     return PREPARE_UNRECOGNIZED_STATEMENT;
 }
 
-MetaCommandResult doMetaCommand(std::string& input)
+void writeEntireBtree(NodeGroup* curr, std::ofstream& wf)
+{
+    for (int i = 0; i < curr->nodes.size(); i++)
+    {
+        wf.write(curr->nodes[i]->key.data(), KEY_SIZE);
+        wf.write(curr->nodes[i]->val.data(), KEY_SIZE);
+    }
+    for (int i = 0; i < curr->children.size(); i++)
+    {
+        writeEntireBtree(curr->children[i], wf);
+    }
+}
+
+void freeBtree(NodeGroup* curr)
+{
+    for (int i = 0; i < curr->children.size(); i++)
+    {
+        freeBtree(curr->children[i]);
+    }
+    for (int i = 0; i < curr->nodes.size(); i++)
+    {
+        delete(curr->nodes[i]);
+    }
+    delete(curr);
+}
+
+MetaCommandResult doMetaCommand(std::string& input, std::string_view filename, Table* table)
 {
     if (input == ".exit")
     {
+        std::ofstream wf;
+        wf.open(filename, std::ios::binary | std::ios::out | std::ios::app);
+        if (!wf)
+        {
+            std::cout << "Cannot open file\n";
+            return;
+        }
+        writeEntireBtree((*(table->btree)).getRoot(), wf);
+        wf.close();
+        freeBtree(table->btree->getRoot());
         exit(EXIT_SUCCESS);
     }
     else
@@ -59,56 +96,57 @@ MetaCommandResult doMetaCommand(std::string& input)
     }
 }
 
-void executeInsert(Statement& statement, std::string_view filename, Table& table)
+void executeInsert(Statement& statement, std::string_view filename, Table* table)
 {
-    std::ofstream wf;
-    wf.open(filename, std::ios::binary | std::ios::out | std::ios::app);
-    if (!wf)
-    {
-        std::cout << "Cannot open file\n";
-        return;
-    }
-    wf.write(statement.rowToInsert.key.c_str(), KEY_SIZE);
-    wf.write(statement.rowToInsert.value.c_str(), VALUE_SIZE);
-    wf.close();
-    table.numRows++;
+    (*(table->btree)).add(statement.rowToInsert.key, statement.rowToInsert.value);
 }
 
-void executeSelect(Statement& statement, std::string_view filename, Table& table)
+void printEntireBtree(NodeGroup* curr)
 {
-    std::ifstream rf;
-    rf.open(filename, std::ios::binary);
-    if (!rf)
+    for (int i = 0; i < curr->nodes.size(); i++)
     {
-        std::cout << "Cannot open file\n";
-        return;
+        std::cout << "(" << curr->nodes[i]->key << ": " << curr->nodes[i]->val << ")\n";
     }
-    for (int i = 0; i < table.numRows; i++)
+    for (int i = 0; i < curr->children.size(); i++)
     {
-        char keyString[KEY_SIZE]{};
-        rf.read(keyString, KEY_SIZE);
-        char valString[VALUE_SIZE]{};
-        rf.read(valString, VALUE_SIZE);
-        if (statement.keyToSelect == "*")
-        {
-            std::cout << "(" << keyString << ": " << valString << ")\n";
-        }
-        else if (statement.keyToSelect == keyString)
-        {
-            std::cout << "(" << keyString << ": " << valString << ")\n";
-        }
+        printEntireBtree(curr->children[i]);
     }
-    rf.close();
 }
 
-Table& createTable(std::string_view filename)
+void executeSelect(Statement& statement, std::string_view filename, Table* table)
+{
+    if (statement.keyToSelect == "*")
+    {
+        printEntireBtree((*(table->btree)).getRoot());
+    }
+    else
+    {
+        Node* node = (*(table->btree)).get(statement.keyToSelect);
+        if (node != nullptr)
+        {
+            std::cout << "(" << node->key << ": " << node->val << ")\n";
+        }
+    }
+}
+
+Table* createTable(std::string_view filename)
 {
     std::ifstream f;
     f.open(filename, std::ios::binary);
     f.seekg(0, std::ios::end);
     int fileSize = f.tellg();
     f.close();
-    Table table = { fileSize / ROW_SIZE };
+    Table* table = new Table{};
+    int numRows = fileSize / ROW_SIZE;
+    table->btree = new Btree();
+    for (int i = 0; i < numRows; i++)
+    {
+        char keyString[KEY_SIZE]{};
+        f.read(keyString, KEY_SIZE);
+        char valString[VALUE_SIZE]{};
+        f.read(valString, VALUE_SIZE);
+        (*(table->btree)).add(keyString, valString);
+    }
     return table;
 }
 
@@ -116,14 +154,14 @@ int main()
 {
     std::string input;
     std::string filename = "data.bin";
-    Table table = createTable(filename);
+    Table* table = createTable(filename);
     while (true)
     {
         std::cout << "db > ";
         std::getline(std::cin, input);
         if (input[0] == '.')
         {
-            switch (doMetaCommand(input))
+            switch (doMetaCommand(input, filename, table))
             {
             case META_COMMAND_SUCCESS:
                 continue;
