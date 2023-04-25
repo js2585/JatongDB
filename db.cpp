@@ -83,7 +83,7 @@ MetaCommandResult doMetaCommand(std::string& input, std::string_view filename, T
         if (!wf)
         {
             std::cout << "Cannot open file\n";
-            return;
+            return META_COMMAND_FAIL;
         }
         writeEntireBtree((*(table->btree)).getRoot(), wf);
         wf.close();
@@ -99,6 +99,7 @@ MetaCommandResult doMetaCommand(std::string& input, std::string_view filename, T
 void executeInsert(Statement& statement, std::string_view filename, Table* table)
 {
     (*(table->btree)).add(statement.rowToInsert.key, statement.rowToInsert.value);
+    printEntireBtree((*(table->btree)).getRoot());
 }
 
 void printEntireBtree(NodeGroup* curr)
@@ -168,7 +169,11 @@ int main()
             case META_COMMAND_UNRECOGNIZED:
                 std::cout << "Unrecognized command " << input << "\n";
                 continue;
+            case META_COMMAND_FAIL:
+                std::cout << "Command failed\n";
+                continue;
             }
+
         }
         Statement statement;
         switch (prepareStatement(input, statement))

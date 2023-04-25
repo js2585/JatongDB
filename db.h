@@ -36,7 +36,8 @@ enum PrepareResult
 enum MetaCommandResult
 {
     META_COMMAND_SUCCESS,
-    META_COMMAND_UNRECOGNIZED
+    META_COMMAND_UNRECOGNIZED,
+    META_COMMAND_FAIL
 };
 
 struct Table

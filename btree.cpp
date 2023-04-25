@@ -4,7 +4,7 @@
 
 Btree::Btree(): root{ nullptr } {}
 
-Node* Btree::rGet(NodeGroup* curr, std::string_view key)
+Node* Btree::rGet(NodeGroup* curr, std::string key)
 {
     Node* prev = nullptr;
     int numNodes = curr->nodes.size();
@@ -35,7 +35,7 @@ Node* Btree::rGet(NodeGroup* curr, std::string_view key)
     }
 }
 
-Node* Btree::get(std::string_view key)
+Node* Btree::get(std::string key)
 {
     if (isEmpty())
     {
@@ -44,8 +44,9 @@ Node* Btree::get(std::string_view key)
     return rGet(root, key);
 }
 
-Node* Btree::rAdd(NodeGroup* curr, std::string_view key, std::string_view val)
+Node* Btree::rAdd(NodeGroup* curr, std::string key, std::string val)
 {
+    std::cout << "rAdd Here\n";
     if (root == nullptr)
     {
         Node* node = new Node{ key, val };
@@ -53,6 +54,7 @@ Node* Btree::rAdd(NodeGroup* curr, std::string_view key, std::string_view val)
         root = nodeGroup;
         return nullptr;
     }
+    std::cout << root->nodes.size() << "\n";
     Node* prev = nullptr;
     int numNodes = curr->nodes.size();
     int numChildren = curr->children.size();
@@ -65,6 +67,8 @@ Node* Btree::rAdd(NodeGroup* curr, std::string_view key, std::string_view val)
     {
         if (curr->nodes[i]->key.compare(key) == 0)
         {
+            std::cout << "Found key\n";
+            std::cout << curr->nodes[i]->key << " " << curr->nodes[i]->val << "\n";
             curr->nodes[i]->val = val;
             return nullptr;
         }
@@ -75,6 +79,7 @@ Node* Btree::rAdd(NodeGroup* curr, std::string_view key, std::string_view val)
         }
         prev = curr->nodes[i];
     }
+    std::cout << idx << "\n";
     if (numChildren == 0)
     {
         curr->nodes.insert(curr->nodes.begin() + idx, new Node{ key, val });
@@ -116,8 +121,13 @@ Node* Btree::rAdd(NodeGroup* curr, std::string_view key, std::string_view val)
     return nullptr;
 }
 
-NodeGroup* Btree::add(std::string_view key, std::string_view val)
+NodeGroup* Btree::add(std::string key, std::string val)
 {
+    std::cout << "add Here\n";
+    if (root != nullptr)
+    {
+        std::cout << root->nodes[0]->key << " " << root->nodes[0]->val << "\n";
+    }
     Node* promoted = rAdd(root, key, val);
     if (promoted != nullptr)
     {
