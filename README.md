@@ -1,2 +1,2 @@
 # JatongDB
-Very dumb key value database.
+Very dumb key value database with btree
